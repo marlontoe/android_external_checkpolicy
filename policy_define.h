@@ -9,7 +9,6 @@
  * for NULL (ie 0) because that is a potentially valid return.
  */
 #define COND_ERR ((avrule_t *)-1)
-
 #define TRUE 1
 #define FALSE 0
 
@@ -58,13 +57,14 @@ int define_roleattribute(void);
 int define_filename_trans(void);
 int define_sens(void);
 int define_te_avtab(int which);
+int define_te_avtab_operation(int which);
 int define_typealias(void);
 int define_typeattribute(void);
 int define_typebounds(void);
 int define_type(int alias);
 int define_user(void);
 int define_validatetrans(constraint_expr_t *expr);
-int insert_id(char *id,int push);
+int insert_id(const char *id,int push);
 int insert_separator(int push);
 role_datum_t *define_role_dom(role_datum_t *r);
 role_datum_t *merge_roles_dom(role_datum_t *r1,role_datum_t *r2);

@@ -96,8 +96,8 @@ extern policydb_t *policydbp;
 extern int mlspol;
 
 static int handle_unknown = SEPOL_DENY_UNKNOWN;
-static char *txtfile = "policy.conf";
-static char *binfile = "policy";
+static const char *txtfile = "policy.conf";
+static const char *binfile = "policy";
 
 unsigned int policyvers = POLICYDB_VERSION_MAX;
 
@@ -289,9 +289,9 @@ static int identify_equiv_types(void)
 
 extern char *av_to_string(uint32_t tclass, sepol_access_vector_t av);
 
-int display_bools()
+int display_bools(void)
 {
-	int i;
+	uint32_t i;
 
 	for (i = 0; i < policydbp->p_bools.nprim; i++) {
 		printf("%s : %d\n", policydbp->p_bool_val_to_name[i],
@@ -335,7 +335,7 @@ void display_expr(cond_expr_t * exp)
 	}
 }
 
-int display_cond_expressions()
+int display_cond_expressions(void)
 {
 	cond_node_t *cur;
 
@@ -361,7 +361,7 @@ int change_bool(char *name, int state)
 	return 0;
 }
 
-static int check_level(hashtab_key_t key, hashtab_datum_t datum, void *arg)
+static int check_level(hashtab_key_t key, hashtab_datum_t datum, void *arg __attribute__ ((unused)))
 {
 	level_datum_t *levdatum = (level_datum_t *) datum;
 
@@ -377,11 +377,12 @@ static int check_level(hashtab_key_t key, hashtab_datum_t datum, void *arg)
 int main(int argc, char **argv)
 {
 	sepol_security_class_t tclass;
-	sepol_security_id_t ssid, tsid, *sids;
+	sepol_security_id_t ssid, tsid, *sids, oldsid, newsid, tasksid;
 	sepol_security_context_t scontext;
 	struct sepol_av_decision avd;
 	class_datum_t *cladatum;
-	char ans[80 + 1], *file = txtfile, *outfile = NULL, *path, *fstype;
+	const char *file = txtfile;
+	char ans[80 + 1], *outfile = NULL, *path, *fstype;
 	size_t scontext_len, pathlen;
 	unsigned int i;
 	unsigned int protocol, port;
@@ -395,6 +396,9 @@ int main(int argc, char **argv)
 	char *name;
 	int state;
 	int show_version = 0;
+	char *reason_buf = NULL;
+	unsigned int reason;
+	int flags;
 	struct policy_file pf;
 	struct option long_options[] = {
 		{"output", required_argument, NULL, 'o'},
@@ -646,6 +650,8 @@ int main(int argc, char **argv)
 	printf("f)  display conditional bools\n");
 	printf("g)  display conditional expressions\n");
 	printf("h)  change a boolean value\n");
+	printf("i)  display constraint expressions\n");
+	printf("j)  display validatetrans expressions\n");
 #ifdef EQUIVTYPES
 	printf("z)  Show equivalent types\n");
 #endif
@@ -1061,6 +1067,109 @@ int main(int argc, char **argv)
 
 			change_bool(name, state);
 			free(name);
+			break;
+		case 'i':
+			printf("source sid?  ");
+			FGETS(ans, sizeof(ans), stdin);
+			ssid = atoi(ans);
+
+			printf("target sid?  ");
+			FGETS(ans, sizeof(ans), stdin);
+			tsid = atoi(ans);
+
+			printf("target class?  ");
+			FGETS(ans, sizeof(ans), stdin);
+			if (isdigit(ans[0])) {
+				tclass = atoi(ans);
+				if (!tclass
+				    || tclass > policydb.p_classes.nprim) {
+					printf("\nNo such class.\n");
+					break;
+				}
+				cladatum =
+				    policydb.class_val_to_struct[tclass - 1];
+			} else {
+				ans[strlen(ans) - 1] = 0;
+				cladatum =
+				    (class_datum_t *) hashtab_search(policydb.
+								     p_classes.
+								     table,
+								     ans);
+				if (!cladatum) {
+					printf("\nNo such class\n");
+					break;
+				}
+				tclass = cladatum->s.value;
+			}
+
+			flags = SHOW_GRANTED;
+			if (sepol_compute_av_reason_buffer(ssid, tsid,
+					tclass, 0, &avd, &reason,
+					&reason_buf, flags)) {
+				printf("\nconstraint error\n");
+				break;
+			}
+			if (reason_buf) {
+				printf("\nConstraint expressions:\n%s",
+						reason_buf);
+				free(reason_buf);
+			} else {
+				printf("\nNo constraints found.\n");
+			}
+			break;
+		case 'j':
+			printf("old sid?  ");
+			FGETS(ans, sizeof(ans), stdin);
+			oldsid = atoi(ans);
+
+			printf("new sid?  ");
+			FGETS(ans, sizeof(ans), stdin);
+			newsid = atoi(ans);
+
+			printf("task sid?  ");
+			FGETS(ans, sizeof(ans), stdin);
+			tasksid = atoi(ans);
+
+			printf("target class?  ");
+			FGETS(ans, sizeof(ans), stdin);
+			if (isdigit(ans[0])) {
+				tclass = atoi(ans);
+				if (!tclass
+				    || tclass > policydb.p_classes.nprim) {
+					printf("\nNo such class.\n");
+					break;
+				}
+				cladatum =
+				    policydb.class_val_to_struct[tclass - 1];
+			} else {
+				ans[strlen(ans) - 1] = 0;
+				cladatum =
+				    (class_datum_t *) hashtab_search(policydb.
+								     p_classes.
+								     table,
+								     ans);
+				if (!cladatum) {
+					printf("\nNo such class\n");
+					break;
+				}
+				tclass = cladatum->s.value;
+			}
+
+			flags = SHOW_GRANTED;
+			if (sepol_validate_transition_reason_buffer(oldsid,
+						newsid, tasksid, tclass,
+						&reason_buf, flags)) {
+				printf("\nvalidatetrans error\n");
+				break;
+			}
+			if (reason_buf) {
+				printf("\nValidatetrans expressions:\n%s",
+						reason_buf);
+				free(reason_buf);
+			} else {
+				printf(
+				    "\nNo validatetrans expressions found.\n");
+			}
 			break;
 #ifdef EQUIVTYPES
 		case 'z':

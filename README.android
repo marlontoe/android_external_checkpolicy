@@ -1,0 +1,11 @@
+This directory contains checkpolicy, the SELinux policy compiler.
+Upstream git repository is https://github.com/SELinuxProject/selinux
+(checkpolicy subdirectory) and official releases are available from
+https://github.com/SELinuxProject/selinux/wiki/Releases.
+
+Last updated to checkpolicy 2.4.
+
+New files added for Android:
+* checkpolicy/Android.mk (later added upstream)
+* checkpolicy/MODULE_LICENSE_GPL
+* checkpolicy/NOTICE (upstream calls it COPYING)

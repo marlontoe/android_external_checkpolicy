@@ -25,7 +25,7 @@
 #include <stdint.h>
 #include <string.h>
 
-typedef int (* require_func_t)();
+typedef int (* require_func_t)(void);
 
 #ifdef ANDROID
 #include "policy_parse.h"
@@ -35,7 +35,7 @@ typedef int (* require_func_t)();
 
 static char linebuf[2][255];
 static unsigned int lno = 0;
-int yywarn(char *msg);
+int yywarn(const char *msg);
 
 void set_source_file(const char *name);
 
@@ -242,8 +242,8 @@ LOW				{ return(LOW); }
 "/"({alnum}|[_\.\-/])*	        { return(PATH); }
 \"({alnum}|[_\.\-\+\~\: ])+\"	{ return(FILENAME); }
 {letter}({alnum}|[_\-])*([\.]?({alnum}|[_\-]))*	{ return(IDENTIFIER); }
-{alnum}*{letter}{alnum}*        { return(FILESYSTEM); }
 {digit}+|0x{hexval}+            { return(NUMBER); }
+{alnum}*{letter}{alnum}*        { return(FILESYSTEM); }
 {digit}{1,3}(\.{digit}{1,3}){3}    { return(IPV4_ADDR); }
 {hexval}{0,4}":"{hexval}{0,4}":"({hexval}|[:.])*  { return(IPV6_ADDR); }
 {digit}+(\.({alnum}|[_.])*)?    { return(VERSION_IDENTIFIER); }
@@ -272,7 +272,7 @@ LOW				{ return(LOW); }
 "*"				{ return(yytext[0]); } 
 .                               { yywarn("unrecognized character");}
 %%
-int yyerror(char *msg)
+int yyerror(const char *msg)
 {
 	if (source_file[0])
 		fprintf(stderr, "%s:%ld:",
@@ -288,7 +288,7 @@ int yyerror(char *msg)
 	return -1;
 }
 
-int yywarn(char *msg)
+int yywarn(const char *msg)
 {
 	if (source_file[0])
 		fprintf(stderr, "%s:%ld:",
